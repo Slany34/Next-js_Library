@@ -6,33 +6,30 @@ import type { Product, ProductDraft, ProductList, SearchQuery } from "@/lib/prod
 import ProductSearchForm from "./ProductSearchForm";
 import ProductForm from "./ProductForm";
 
-
+// Type ให้สถานะของการโหลดหน้าเว็บ
 type LoadState = "idle" | "loading" | "error" | "ready";
 
-export default function ProductExplorer() {
+export default function ProductExplorer({ isLoggedIn }: { isLoggedIn?: boolean }) {
     const [products, setProducts] = useState<Product[]>([]);
     const [status, setStatus] = useState<LoadState>("loading");
     const [errorMessage, setErrorMessage] = useState("");
-
+    // State ที่ใช้จำว่ากำลังแก้ไขสินค้า ID หมายเลขอะไรอยู่ (ถ้าไม่แก้ เป็น null)
     const [editingId, setEditingId] = useState<number | null>(null);
 
     function saveProduct(draft: ProductDraft) {
         if (editingId !== null) {
-            // กรณีแก้ไข: แทนที่เฉพาะแถวที่ id ตรงกัน
+            // อัปเดต state สินค้าโดยลูปหาแถวที่ id ตรงกัน เอาค่าเดิมผสมค่าใหม่
             setProducts(products.map((item) =>
                 item.id === editingId ? { ...item, ...draft } : item
             ));
             setEditingId(null); // กลับสู่โหมดเพิ่ม
-        } else {
-            // เติม: เครื่องหมายที่คัดลอกสมาชิกเดิมทั้งหมดของ Array
+        } else {// ถ้าเป็นโหมด"เพิ่ม"ให้ก็อปปี้สินค้าเก่าแล้วต่อท้ายด้วยสินค้าใหม่(จำลองสร้าง ID จากเวลาปัจจุบัน)
             setProducts([...products, { ...draft, id: Date.now() }]);
         }
     }
 
     function removeProduct(id: number) {
-        // ลบรายการโดยคัดกรองเอาเฉพาะรายการที่ id ไม่ตรงกับที่ถูกลบ
         setProducts(products.filter((item) => item.id !== id));
-        // ถ้ารายการที่กำลังแก้ถูกลบ ให้ยกเลิกโหมดแก้ไขด้วย
         if (editingId === id) {
             setEditingId(null);
         }
@@ -64,7 +61,6 @@ export default function ProductExplorer() {
 
     useEffect(() => {
         fetchProducts(defaultQuery).then(showResult).catch(showError);
-        // เติม: สิ่งที่กำหนดให้ทำงานเพียงครั้งเดียวตอนแสดงผลครั้งแรก
     }, []);
 
 
@@ -101,7 +97,8 @@ export default function ProductExplorer() {
                             <tr>
                                 <th className="th-cell">ชื่อสินค้า</th><th className="th-cell">ราคา</th>
                                 <th className="th-cell">คงเหลือ</th><th className="th-cell">หมวดหมู่</th>
-                                <th className="th-cell">รูปประกอบ</th><th className="th-cell text-center">ลบและแก้ไข</th>
+                                <th className="th-cell">รูปประกอบ</th>
+                                {isLoggedIn && <th className="th-cell text-center">ลบและแก้ไข</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -117,12 +114,14 @@ export default function ProductExplorer() {
                                         )}
                                     </td>
 
-                                    <td className="td-cell">
-                                        <div className="action-buttons">
+                                    {isLoggedIn && (
+                                        <td className="td-cell">
+                                            <div className="action-buttons">
                                             <button type="button" className="btn-secondary" onClick={() => setEditingId(item.id)}>แก้ไข</button>
                                             <button type="button" className="btn-danger" onClick={() => removeProduct(item.id)}>ลบ</button>
                                         </div>
-                                    </td>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
@@ -132,14 +131,12 @@ export default function ProductExplorer() {
 
             <div className="form-wrapper">
                 <ProductForm
-                    // ใช้ key เพื่อบังคับให้ React ล้างฟอร์มสร้างใหม่เมื่อสลับรายการแก้ไข
                     key={editingId ?? "new"}
 
-                    // ส่งค่าจริงของรายการที่กำลังแก้ไปให้ฟอร์ม (ถ้าไม่พบจะเป็น null)
                     editing={editingId ? products.find(item => item.id === editingId) || null : null}
 
                     onSave={saveProduct}
-                    onCancel={() => setEditingId(null)} // คลิกยกเลิกให้กลับไปโหมดเพิ่ม
+                    onCancel={() => setEditingId(null)} 
                 />
                 {/* <ProductForm
                     editing={null}
